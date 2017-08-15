@@ -1,0 +1,474 @@
+---
+title: "Sa"
+output: html_notebook
+---
+
+# Packages
+```{r, eval=FALSE}
+library("data.table")
+library("ggthemes")
+library("tidyverse")
+library("grateful")
+```
+
+# Dataset
+```{r}
+df <- read.csv("./datasetStatsScripts/dataset.csv", header = T, sep = ",")
+str(df)
+df <- setnames(df, tolower(names(df))) # todos a minusculas
+```
+
+```{r}
+df$clasif.max <- as.factor(df$clasif.max)
+df$clasif.mand <- as.factor(df$clasif.mand)
+
+which( colnames(df)=="x1.1" )
+which( colnames(df)=="x8.2" )
+
+df[,9:23] <- sapply(df[,9:23], as.numeric)
+df$Promedio <- rowMeans(df[,c(9:23)], na.rm=TRUE)
+
+str(df)
+```
+
+# EDA ---------
+
+```{r}
+summary(df)
+
+```
+
+# son similares los grupos? ------------------
+## en edad, sexo y clasificacion
+
+```{r}
+hist(df$edad, main = "Distribución por edad", xlab = "Edad", ylab = "Frecuencia") # todos por edad
+
+
+```
+```{r}
+ggplot(df, aes(x=edad, fill = sexo)) +
+        geom_histogram(binwidth=2,colour="white") + 
+        theme_grey()
+
+```
+## edad y sexo
+
+```{r}
+par(mfrow=c(1,1)) #numero de figuras en el plot;c(filas,columnas) 
+par(mar=c(5,5,3,2)+0.1) #margenes
+
+```
+
+```{r}
+ggplot(df, aes(x=edad, fill = sexo)) +
+        geom_histogram(binwidth=2,colour="white") + 
+        theme_grey() +
+        facet_grid( sexo ~ .)  + 
+        xlab("Edad") +
+        ylab("Frecuencia") +
+        ggtitle("Distribucion de grupos por edad y sexo")
+```
+
+
+```{r}
+ggplot(df, aes(x=edad, fill = sexo)) +
+        geom_histogram(binwidth=2,colour="white") + 
+        theme_grey() +
+        facet_grid( sexo ~ tecnica)  + 
+        xlab("Edad") +
+        ylab("Frecuencia") +
+        ggtitle("Distribucion de grupos por edad, sexo y técnica")
+
+```
+```{r}
+t.test(data= df, edad~sexo) # no hay diferencia de edad por sexo
+
+```
+
+```{r}
+par(mfrow=c(1,1)) #numero de figuras en el plot;c(filas,columnas) 
+par(mar=c(5,5,3,2)+0.1) #margenes
+boxplot(data=df, edad~sexo, 
+        main = "Distribución edad según sexo (t = -0.031842, df = 34.405, p-value = 0.9748)", xlab= "Sexo", ylab= "Edad", bty="n")
+
+```
+```{r}
+t.test(data=df, edad~sexo) # t = -0.79003, df = 62.553, p-value = 0.4325 No hay diferencias de edad entre grupos
+```
+# y entre grupos?
+## por edad
+
+```{r}
+boxplot(data=df, edad~tecnica, 
+        main = "Distribución edad según técnica (t = -0.79003, df = 62.553, p-value = 0.4325)", xlab= "Sexo", ylab= "Edad", bty="n")
+```
+
+```{r}
+
+t.test(data=df, edad~tecnica) # t = -0.79003, df = 62.553, p-value = 0.4325 No hay diferencias de edad entre grupos
+```
+
+
+## por sexo
+
+```{r}
+
+table(df$tecnica, df$sexo)
+chisq.test(table(df$tecnica, df$sexo)) # X-squared = 5.5884, df = 1, p-value = 0.01808
+
+```
+```{r}
+
+poredad <- ggplot(df, aes(x=edad, fill = sexo)) +
+        geom_histogram(binwidth=2,colour="white") + 
+        theme_grey() 
+```
+
+
+```{r}
+poredad + facet_grid( sexo ~ tecnica) # hay un grupo con menos: mujeres TS
+```
+
+```{r}
+
+poredad + facet_grid( clasif.mand ~ sexo)
+```
+```{r}
+
+poredad + facet_grid( clasif.mand ~ clasif.max ~sexo)
+```
+
+```{r}
+poredad + facet_grid( clasif.mand ~ clasif.max ~sexo, margins=TRUE)
+```
+
+## en género
+```{r}
+q <- ggplot(aes(y = Promedio, x = medicion, fill = sexo), data = df)
+p <- q + geom_boxplot()  # más puntos + geom_jitter(width = 0.2) # para ver por factores + (aes(colour = FACTOR))
+p
+```
+
+## en tipo de maxilar
+
+```{r}
+q <- ggplot(aes(y = Promedio, x = medicion, fill = tecnica), data = df)
+p <- q + geom_boxplot()  # más puntos + geom_jitter(width = 0.2) # para ver por factores + (aes(colour = FACTOR))
+p
+```
+
+```{r}
+p + xlab("Mes de evaluación") +
+  ylab("Promedio de las preguntas") +
+  ggtitle("Evaluación del Promedio de satisfacción por grupo a los 3 y 6 meses")
+```
+
+# comparación tomando todos como uno solo ------------
+```{r}
+
+
+comparacionportecnicaymes <- aov(Promedio~tecnica, data=df)
+comparacionportecnicaymes
+summary(comparacionportecnicaymes)
+```
+# medidas repetidas ------------
+```{r}
+
+
+repetida <- aov(Promedio ~ tecnica*medicion + Error(n), df)
+repetida
+summary(repetida)
+
+```
+
+# atendieron el mismo tipo de paciente los colegas?
+```{r}
+
+
+q <- ggplot(aes(y = Promedio, x = medicion, fill = tecnica), data = df)
+p <- q + geom_boxplot()  # más puntos + geom_jitter(width = 0.2) # para ver por factores + (aes(colour = FACTOR))
+p
+
+```
+
+# Tabla 1 -----------
+
+```{r}
+
+
+
+table(df$tecnica)
+tapply(df$edad, df$tecnica, mean)
+
+tapply(df$edad, df$tecnica, sd)
+t.test(df$edad~df$tecnica)
+
+```
+
+```{r}
+
+sexoxtecnica <- table(df$sexo, df$tecnica)
+sexoxtecnica
+chisq.test(sexoxtecnica)
+
+```
+
+```{r}
+
+maxilar <- table(df$clasif.max, df$tecnica)
+table(df$clasif.mand, df$tecnica)
+chisq.test(table(df$clasif.max, df$tecnica))
+chisq.test(table(df$clasif.mand, df$tecnica))
+
+```
+
+# Datos de base, medición 1 ------------
+```{r}
+
+
+df_inicio <- subset(df, df$medicion=="3 meses")
+df_final <- subset(df, df$medicion=="6 meses")
+str(df_inicio)
+str(df_final)
+
+
+```
+
+```{r}
+
+table(df_inicio$SEXO)
+table(df_inicio$tecnica)
+tapply(df_inicio$edad, df_inicio$tecnica, mean)
+
+
+```
+
+# Tabla 1 ----------
+```{r}
+
+
+tapply(df_inicio$edad, df_inicio$tecnica, sd)
+t.test(df_inicio$edad~df_inicio$tecnica)
+sexoxtecnica <- table(df_inicio$sexo, df_inicio$tecnica)
+sexoxtecnica
+chisq.test(sexoxtecnica)
+fisher.test(sexoxtecnica)
+
+
+```
+
+```{r}
+
+table(df_inicio$clasif.max, df_inicio$tecnica); fisher.test(table(df_inicio$clasif.max, df_inicio$tecnica))
+table(df_inicio$clasif.mand, df_inicio$tecnica); fisher.test(table(df_inicio$clasif.mand, df_inicio$tecnica))
+
+
+```
+
+
+# Tabla 2 --------------
+```{r}
+
+tabla2.1.1 <- aggregate(df$x1.1, list(Tecnica= df$tecnica, Medición=df$medicion), mean, na.rm=T)
+tabla2.1.1
+
+```
+
+```{r}
+
+tbl_df(df)
+
+df_prepost <- as.data.frame(split(df, df$medicion))
+
+
+```
+
+```{r}
+
+df_prepost$difX.2.1 <- df_prepost$X6.meses.x2.1 - df_prepost$X3.meses.x2.1 # columna 51
+df_prepost$difX.2.2 <- df_prepost$X6.meses.x2.2 - df_prepost$X3.meses.x2.2
+df_prepost$difX.3.1 <- df_prepost$X6.meses.x3.1 - df_prepost$X3.meses.x3.1
+df_prepost$difX.3.2 <- df_prepost$X6.meses.x3.2 - df_prepost$X3.meses.x3.2
+df_prepost$difX.4.1 <- df_prepost$X6.meses.x4.1 - df_prepost$X3.meses.x4.1
+df_prepost$difX.4.2 <- df_prepost$X6.meses.x4.2 - df_prepost$X3.meses.x4.2
+df_prepost$difX.5.1 <- df_prepost$X6.meses.x5.1 - df_prepost$X3.meses.x5.1
+df_prepost$difX.5.2 <- df_prepost$X6.meses.x5.2 - df_prepost$X3.meses.x5.2
+df_prepost$difX.6.1 <- df_prepost$X6.meses.x6.1 - df_prepost$X3.meses.x6.1
+df_prepost$difX.6.2 <- df_prepost$X6.meses.x6.2 - df_prepost$X3.meses.x6.2
+df_prepost$difX.7.1 <- df_prepost$X6.meses.x7.1 - df_prepost$X3.meses.x7.1
+df_prepost$difX.7.2 <- df_prepost$X6.meses.x7.2 - df_prepost$X3.meses.x7.2
+df_prepost$difX.8.1 <- df_prepost$X6.meses.x8.1 - df_prepost$X3.meses.x8.1
+df_prepost$difX.8.2 <- df_prepost$X6.meses.x8.2 - df_prepost$X3.meses.x8.2 # columna 64
+
+
+```
+
+# convirtiendo wide to long
+
+```{r}
+
+write.csv2(df_prepost, "./datasetStatsScripts/prepost.csv")
+mean(df_prepost$difX.2.1, na.rm=T)
+
+
+
+long <- gather(df, item, valor, x1.1:x8.2)
+head(long)
+
+write.csv(aggregate(valor ~ item + tecnica + medicion, long, mean), "./datasetStatsScripts/table2Promedios.csv")
+write.csv(aggregate(valor ~ item + tecnica + medicion, long, sd), "./datasetStatsScripts/table2sd.csv")
+
+
+
+antes <- df[which(df$tecnica=="3 meses"),]
+despues <- df[which(df$medicion=="6 meses"),]
+
+```
+
+```{r}
+head(antes)
+plot(x1.1~tecnica, data=antes) # todo ok para las comparaciones
+
+
+```
+
+```{r}
+
+# comparaciones antes
+t.test(x1.1~tecnica, data=antes)
+t.test(x2.1~tecnica, data=antes)
+t.test(x2.2~tecnica, data=antes)
+t.test(x3.1~tecnica, data=antes)
+t.test(x3.2~tecnica, data=antes)
+t.test(x4.1~tecnica, data=antes)
+t.test(x4.2~tecnica, data=antes)
+t.test(x5.1~tecnica, data=antes)
+t.test(x5.2~tecnica, data=antes)
+t.test(x6.1~tecnica, data=antes)
+t.test(x6.2~tecnica, data=antes)
+t.test(x7.1~tecnica, data=antes)
+t.test(x7.2~tecnica, data=antes)
+t.test(x8.1~tecnica, data=antes)
+t.test(x8.2~tecnica, data=antes)
+
+#comparaciones despues 
+t.test(x1.1~tecnica, data=despues)
+t.test(x2.1~tecnica, data=despues)
+t.test(x2.2~tecnica, data=despues)
+t.test(x3.1~tecnica, data=despues)
+t.test(x3.2~tecnica, data=despues)
+t.test(x4.1~tecnica, data=despues)
+t.test(x4.2~tecnica, data=despues)
+t.test(x5.1~tecnica, data=despues)
+t.test(x5.2~tecnica, data=despues)
+t.test(x6.1~tecnica, data=despues)
+t.test(x6.2~tecnica, data=despues)
+t.test(x7.1~tecnica, data=despues)
+t.test(x7.2~tecnica, data=despues)
+t.test(x8.1~tecnica, data=despues)
+t.test(x8.2~tecnica, data=despues)
+
+
+
+# comparacion general
+t.test(df$Promedio~df$tecnica)
+
+
+```
+
+
+```{r}
+
+# divido por técnica
+tc <- df[which(df$tecnica=="TC"),]
+ts <- df[which(df$tecnica=="TS"),]
+head(tc)
+head(ts)
+
+
+```
+
+# comparaciones antes
+plot(x1.1~medicion, data=tc)
+t.test(Promedio~medicion, data=tc)
+
+t.test(x1.1~medicion, data=tc)
+t.test(x2.1~medicion, data=tc)
+t.test(x2.2~medicion, data=tc)
+t.test(x3.1~medicion, data=tc)
+t.test(x3.2~medicion, data=tc)
+t.test(x4.1~medicion, data=tc)
+t.test(x4.2~medicion, data=tc)
+t.test(x5.1~medicion, data=tc)
+t.test(x5.2~medicion, data=tc)
+t.test(x6.1~medicion, data=tc)
+t.test(x6.2~medicion, data=tc)
+t.test(x7.1~medicion, data=tc)
+t.test(x7.2~medicion, data=tc)
+t.test(x8.1~medicion, data=tc)
+t.test(x8.2~medicion, data=tc)
+
+#comparaciones despues 
+t.test(Promedio~medicion, data=ts)
+t.test(x1.1~medicion, data=ts)
+t.test(x2.1~medicion, data=ts)
+t.test(x2.2~medicion, data=ts)
+t.test(x3.1~medicion, data=ts)
+t.test(x3.2~medicion, data=ts)
+t.test(x4.1~medicion, data=ts)
+t.test(x4.2~medicion, data=ts)
+t.test(x5.1~medicion, data=ts)
+t.test(x5.2~medicion, data=ts)
+t.test(x6.1~medicion, data=ts)
+t.test(x6.2~medicion, data=ts)
+t.test(x7.1~medicion, data=ts)
+t.test(x7.2~medicion, data=ts)
+t.test(x8.1~medicion, data=ts)
+t.test(x8.2~medicion, data=ts)
+
+
+# ANOVA y ANCOVA  ----
+# ver http://www.wekaleamstudios.co.uk/posts/analysis-of-covariance-extending-simple-linear-regression/
+mod1 <- lm(Promedio ~ tecnica, data = long)
+summary(mod1)
+
+# ahora asumo para cada paciente
+mod2 <- lm(Promedio ~ tecnica + medicion, data = long)
+summary(mod2)
+
+# comparo los modelos
+anova(mod1, mod2)
+
+
+# otro 
+
+mod3 <- lm(Promedio ~ sexo + clasif.max + clasif.mand + tecnica, data = long)
+mod4 <- lm(Promedio ~ tecnica, data = long)
+summary(mod3)
+anova(mod3)
+
+
+
+# ANOVA
+final <- long[which(long$medicion=="6 meses"), ]
+head(final)
+mod5 <- lm(Promedio ~ tecnica + sexo + clasif.mand + clasif.max, data = final)
+summary(mod5)
+anova(mod5)
+tapply(final$Promedio, final$tecnica, mean, na.rm=T) #parece que si hay diferencia, 85 para TC y 76 para TS
+tapply(final$experto, final$tecnica, mean, na.rm=T)
+t.test(final$experto, final$Promedio) #no hay diferencia entre la evaluación del experto y el Promedio
+
+
+p <-   ggplot(data= df, aes(factor(medicion), y=Promedio))
+
+p + geom_boxplot(aes(fill = factor(tecnica))) + 
+  labs(list(title = "Quality comparison by group at 3 and 6 months", 
+            x = "Month", 
+            y = "Quality average")) + 
+  theme_minimal() + 
+  scale_fill_discrete(guide = guide_legend(title = "Group"), labels = c("Conventional", "Simplified")) + 
+  scale_x_discrete("Month", labels = c("3", "6"))
+
+```
